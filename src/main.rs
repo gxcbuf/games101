@@ -181,15 +181,31 @@ fn main() -> Result<()> {
     let vertexs = vec![
         Vertex {
             coord: Vec3::new(2.0, 0.0, -2.0),
+            color: Vec3::new(217.0, 238.0, 185.0),
         },
         Vertex {
             coord: Vec3::new(0.0, 2.0, -2.0),
+            color: Vec3::new(217.0, 238.0, 185.0),
         },
         Vertex {
             coord: Vec3::new(-2.0, 0.0, -2.0),
+            color: Vec3::new(217.0, 238.0, 185.0),
+        },
+        //
+        Vertex {
+            coord: Vec3::new(3.5, -1.0, -5.0),
+            color: Vec3::new(185.0, 217.0, 238.0),
+        },
+        Vertex {
+            coord: Vec3::new(2.5, 1.5, -5.0),
+            color: Vec3::new(185.0, 217.0, 238.0),
+        },
+        Vertex {
+            coord: Vec3::new(-1.0, 0.5, -5.0),
+            color: Vec3::new(185.0, 217.0, 238.0),
         },
     ];
-    let inds = vec![Indices::new(0, 1, 2)];
+    let inds = vec![Indices::new(0, 1, 2), Indices::new(3, 4, 5)];
 
     r.insert_vertexs(&vertexs);
     r.insert_indices(&inds);
@@ -198,49 +214,44 @@ fn main() -> Result<()> {
 
     let mut key: i32 = 0;
     let axis = Vec3::new(0.0, 0.0, 1.0);
-    while key != 27 {
-        r.clear(Buffer::All);
+    // while key != 27 {
+    r.clear(Buffer::All);
 
-        // mvp变换
-        // r.set_mode(get_model_matrix(90.0));
-        r.set_mode(get_rotation(axis, angle));
-        r.set_view(get_view_matrix(eye_pos));
-        r.set_projection(get_projection_matrix(45.0, 1.0, 0.1, 50.0));
+    // mvp变换
+    r.set_mode(get_model_matrix(angle));
+    r.set_view(get_view_matrix(eye_pos));
+    r.set_projection(get_projection_matrix(45.0, 1.0, 0.1, 50.0));
 
-        // 光栅化
-        r.draw(&inds, Primitive::Triangle);
+    // 光栅化
+    r.draw(&inds, Primitive::Triangle);
 
-        // r.draw_line(
-        //     Vec3::new(510.0, 515.4, -2409.8171),
-        //     Vec3::new(350.0, 350.0, -2409.8171),
-        // );
+    // 获得光栅化后的数据
+    let buf = r.frame_buf_data();
 
-        // 获得光栅化后的数据
-        let buf = r.frame_buf_data();
+    // 设置opencv的数据
+    let mut data = Mat::default();
+    unsafe {
+        data = Mat::new_rows_cols_with_data(
+            700,
+            700,
+            opencv::core::CV_32FC3,
+            buf.as_ptr() as *mut core::ffi::c_void,
+            0,
+        )?;
+    };
+    let mut frame = Mat::default();
+    data.convert_to(&mut frame, opencv::core::CV_8UC3, 1.0, 1.0)?;
 
-        // 设置opencv的数据
-        let mut data = Mat::default();
-        unsafe {
-            data = Mat::new_rows_cols_with_data(
-                700,
-                700,
-                opencv::core::CV_32FC3,
-                buf.as_ptr() as *mut core::ffi::c_void,
-                0,
-            )?;
-        };
-        let mut frame = Mat::default();
-        data.convert_to(&mut frame, opencv::core::CV_8UC3, 1.0, 1.0)?;
+    // 展示数据
+    highgui::imshow("window", &frame)?;
 
-        // 展示数据
-        highgui::imshow("window", &frame)?;
-
-        key = highgui::wait_key(10)?;
-        if key == b'a' as i32 {
-            angle += 10.0;
-        } else if key == b'd' as i32 {
-            angle -= 10.0;
-        }
+    key = highgui::wait_key(10)?;
+    if key == b'a' as i32 {
+        angle += 10.0;
+    } else if key == b'd' as i32 {
+        angle -= 10.0;
     }
+    // }
+    loop {}
     Ok(())
 }

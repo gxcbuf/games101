@@ -1,5 +1,6 @@
 use glam::{Vec2, Vec3, Vec4};
 
+#[derive(Debug)]
 pub struct Triangle {
     // 三角形的三个点, v0, v1, v2
     pub v: [Vec3; 3],
@@ -42,7 +43,7 @@ impl Triangle {
         if r < 0.0 || r > 255.0 || g < 0.0 || g > 255.0 || b < 0.0 || b > 255.0 {
             panic!("Invalid color values");
         }
-        self.color[idx] = Vec3::new(r / 255.0, g / 255.0, b / 255.0)
+        self.color[idx] = Vec3::new(r, g, b)
     }
 
     pub fn set_texcoord(&mut self, idx: usize, s: f32, t: f32) {
@@ -55,5 +56,54 @@ impl Triangle {
             res[idx] = Vec4::new(vex.x, vex.y, vex.z, 1.0);
         }
         res
+    }
+
+    /// 目前只返回一种颜色
+    pub fn get_color(&self) -> &Vec3 {
+        &self.color[0]
+    }
+
+    /// 计算屏幕空间坐标(x, y)是否在三角形内部
+    pub fn is_inside(&self, x: usize, y: usize) -> bool {
+        let v = &self.v;
+        let p = Vec3::new(x as f32, y as f32, 0.0);
+        // 三角形三个顶点，忽略z坐标
+        let p0 = Vec3::new(v[0].x, v[0].y, 0.0);
+        let p1 = Vec3::new(v[1].x, v[1].y, 0.0);
+        let p2 = Vec3::new(v[2].x, v[2].y, 0.0);
+
+        let i = (p1 - p0).cross(p - p0).z;
+        let j = (p2 - p1).cross(p - p1).z;
+        let k = (p0 - p2).cross(p - p2).z;
+
+        if i > 0.0 {
+            j > 0.0 && k > 0.0
+        } else {
+            j < 0.0 && k < 0.0
+        }
+    }
+
+    /// 计算重心坐标
+    pub fn compute_Barycentric_2d(&self, x: usize, y: usize) -> (f32, f32, f32) {
+        let x = x as f32;
+        let y = y as f32;
+
+        let v = &self.v;
+
+        let alpha = (x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * y + v[1].x * v[2].y
+            - v[2].x * v[1].y)
+            / (v[0].x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * v[0].y + v[1].x * v[2].y
+                - v[2].x * v[1].y);
+        let beta = (x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * y + v[2].x * v[0].y
+            - v[0].x * v[2].y)
+            / (v[1].x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * v[1].y + v[2].x * v[0].y
+                - v[0].x * v[2].y);
+
+        let gamma = (x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * y + v[0].x * v[1].y
+            - v[1].x * v[0].y)
+            / (v[2].x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * v[2].y + v[0].x * v[1].y
+                - v[1].x * v[0].y);
+
+        (alpha, beta, gamma)
     }
 }

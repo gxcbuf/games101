@@ -19,6 +19,7 @@ pub enum Primitive {
 #[derive(Debug, Clone)]
 pub struct Vertex {
     pub coord: Vec3,
+    pub color: Vec3,
 }
 
 #[derive(Debug, Clone)]
@@ -80,7 +81,8 @@ impl Rasterizer {
 
     pub fn set_pixel2(&mut self, x: i32, y: i32, color: &Vec3) {
         let ind = self.get_index(x as usize, y as usize);
-        self.frame_buf[ind] = color.clone();
+        // self.frame_buf[ind] = color.clone();
+        self.frame_buf[ind] = Vec3::new(238.0, 217.0, 185.0);
         // println!("x, y: ({}, {}), index: {}", x, y, ind);
     }
 
@@ -116,7 +118,7 @@ impl Rasterizer {
         let triangles = self.calc_triangles(inds);
 
         for t in triangles.iter() {
-            self.rasterize_wireframe(t);
+            self.rasterize_triangle(t);
         }
     }
 
@@ -228,6 +230,39 @@ impl Rasterizer {
         }
     }
 
+    fn rasterize_triangle(&mut self, t: &Triangle) {
+        let v = t.to_vec4();
+        // 1. 创建包围盒
+        let min_x = v[0].x.min(v[1].x).min(v[2].x) as usize;
+        let min_y = v[0].y.min(v[1].y).min(v[2].y) as usize;
+        let max_x = v[0].x.max(v[1].x).max(v[2].x) as usize;
+        let max_y = v[0].y.max(v[1].y).max(v[2].y) as usize;
+
+        for x in min_x..max_x {
+            for y in min_y..max_y {
+                // 2. 遍历bounding box, 计算像素中心的屏幕空间坐标是否在三角形内
+                if !t.is_inside(x, y) {
+                    continue;
+                }
+
+                // 3. 如果在三角形内，对比其插值深度与深度缓存区的值
+                let (alpha, beta, gamma) = t.compute_Barycentric_2d(x, y);
+                let w_reciprocal = 1.0 / (alpha / v[0].w + beta / v[1].w + gamma / v[2].w);
+                let mut z_interpolated =
+                    alpha * v[0].z / v[0].w + beta * v[1].z / v[1].w + gamma * v[2].z / v[2].w;
+                z_interpolated *= w_reciprocal;
+
+                let idx = self.get_index(x, y);
+                // 4. 如果更靠近相机，则更新缓存区颜色
+                if z_interpolated < self.depth_buf[idx] {
+                    self.set_pixel2(x as i32, y as i32, t.get_color());
+                    self.depth_buf[idx] = z_interpolated;
+                }
+            }
+        }
+        println!("{:?}", t.get_color());
+    }
+
     fn calc_triangles(&self, inds: &Vec<Indices>) -> Vec<Triangle> {
         let f1: f32 = (100.0 - 0.1) / 2.0;
         let f2: f32 = (100.0 + 0.1) / 2.0;
@@ -239,12 +274,12 @@ impl Rasterizer {
         // mvp 矩阵
         let mvp: Mat4 = self.projection * self.view * self.model;
         for ind in inds.iter() {
-            let vertexs = self.get_vertexs(ind);
+            let vexs = self.get_vertexs(ind);
             // 转化为齐次坐标，添加一个维度
             let mut vertexs = [
-                mvp * to_vec4(&vertexs[0].coord, 1.0),
-                mvp * to_vec4(&vertexs[1].coord, 1.0),
-                mvp * to_vec4(&vertexs[2].coord, 1.0),
+                mvp * to_vec4(&vexs[0].coord, 1.0),
+                mvp * to_vec4(&vexs[1].coord, 1.0),
+                mvp * to_vec4(&vexs[2].coord, 1.0),
             ];
 
             for vex in vertexs.iter_mut() {
@@ -261,9 +296,10 @@ impl Rasterizer {
             for (idx, vex) in vertexs.iter().enumerate() {
                 t.set_vertex(idx, vex.truncate());
             }
-            t.set_color(0, 255.0, 0.0, 0.0);
-            t.set_color(1, 0.0, 255.0, 0.0);
-            t.set_color(2, 0.0, 0.0, 255.0);
+
+            for (idx, vex) in vexs.iter().enumerate() {
+                t.set_color(idx, vex.color.x, vex.color.y, vex.color.z);
+            }
 
             triangles.push(t);
         }
@@ -285,6 +321,6 @@ impl Rasterizer {
     }
 
     fn get_index(&self, x: usize, y: usize) -> usize {
-        (self.height - y) * self.width + x
+        (self.height - 1 - (y as f32).round() as usize) * self.width + x
     }
 }
