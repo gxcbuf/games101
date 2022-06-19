@@ -1,6 +1,8 @@
+#![allow(unused)]
+
 use anyhow::Result;
-use glam::{Mat4, Vec3, Vec4};
-use opencv::{highgui, hub_prelude, imgcodecs, imgproc, prelude::*, videoio};
+use glam::{Mat4, Vec3};
+use opencv::{highgui, prelude::*};
 
 use rasterizer::{Buffer, Indices, Primitive, Rasterizer, Vertex};
 
@@ -134,9 +136,9 @@ fn get_rotation(axis: Vec3, angle: f32) -> Mat4 {
     let sina = angle.sin();
     let [x, y, z] = axis.to_array();
 
-    let I = Mat4::IDENTITY;
+    let matrix_i = Mat4::IDENTITY;
 
-    let axisN = Mat4::from_cols_array(&[
+    let axis_n = Mat4::from_cols_array(&[
         x * x,
         x * y,
         x * z,
@@ -156,14 +158,15 @@ fn get_rotation(axis: Vec3, angle: f32) -> Mat4 {
     ])
     .transpose();
 
-    let matrix_N = Mat4::from_cols_array(&[
+    let matrix_n = Mat4::from_cols_array(&[
         0.0, -z, y, 0.0, //
         z, 0.0, -x, 0.0, //
         -y, x, 0.0, 0.0, //
         0.0, 0.0, 0.0, 1.0, //
-    ]);
+    ])
+    .transpose();
 
-    let mut rotation = cosa * I + (1.0 - cosa) * axisN + sina * matrix_N;
+    let mut rotation = cosa * matrix_i + (1.0 - cosa) * axis_n + sina * matrix_n;
     rotation.w_axis.w = 1.0;
     rotation
 }

@@ -84,7 +84,7 @@ impl Triangle {
     }
 
     /// 计算重心坐标
-    pub fn compute_Barycentric_2d(&self, x: usize, y: usize) -> (f32, f32, f32) {
+    pub fn compute_barycentric_2d(&self, x: usize, y: usize) -> (f32, f32, f32) {
         let x = x as f32;
         let y = y as f32;
 

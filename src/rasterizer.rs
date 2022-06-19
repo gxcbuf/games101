@@ -81,8 +81,8 @@ impl Rasterizer {
 
     pub fn set_pixel2(&mut self, x: i32, y: i32, color: &Vec3) {
         let ind = self.get_index(x as usize, y as usize);
-        // self.frame_buf[ind] = color.clone();
-        self.frame_buf[ind] = Vec3::new(238.0, 217.0, 185.0);
+        self.frame_buf[ind] = color.clone();
+        // self.frame_buf[ind] = Vec3::new(238.0, 217.0, 185.0);
         // println!("x, y: ({}, {}), index: {}", x, y, ind);
     }
 
@@ -246,7 +246,7 @@ impl Rasterizer {
                 }
 
                 // 3. 如果在三角形内，对比其插值深度与深度缓存区的值
-                let (alpha, beta, gamma) = t.compute_Barycentric_2d(x, y);
+                let (alpha, beta, gamma) = t.compute_barycentric_2d(x, y);
                 let w_reciprocal = 1.0 / (alpha / v[0].w + beta / v[1].w + gamma / v[2].w);
                 let mut z_interpolated =
                     alpha * v[0].z / v[0].w + beta * v[1].z / v[1].w + gamma * v[2].z / v[2].w;
